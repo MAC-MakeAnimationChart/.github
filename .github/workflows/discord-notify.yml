@@ -7,25 +7,44 @@ on:
         required: true
 
 jobs:
-  notify:
+  notify-issue:
+    if: github.event_name == 'issues'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Send Discord Notification
+      - name: Notify Issue Created
         run: |
           curl -H "Content-Type: application/json" \
           -X POST \
-          -d "$(jq -n \
-            --arg repo '${{ github.repository }}' \
-            --arg actor '${{ github.actor }}' \
-            --arg msg '${{ github.event.head_commit.message }}' \
-            --arg sha '${{ github.sha }}' \
-            '{
-              content:
-                "🚀 GitHub Push 알림\n" +
-                "📦 Repository: \($repo)\n" +
-                "👤 User: \($actor)\n" +
-                "📝 Commit: \($msg)\n" +
-                "🔖 SHA: \($sha[0:7])"
-            }')" \
+          -d "{
+            \"content\": \"📌 새로운 Issue 생성\n\n📦 Repository: ${{ github.repository }}\n👤 작성자: ${{ github.actor }}\n📝 제목: ${{ github.event.issue.title }}\n🔗 ${{ github.event.issue.html_url }}\"
+          }" \
+          "${{ secrets.DISCORD_WEBHOOK }}"
+
+  notify-pr-open:
+    if: github.event_name == 'pull_request' && github.event.action == 'opened'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify PR Opened
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{
+            \"content\": \"🚀 Pull Request 생성\n\n📦 Repository: ${{ github.repository }}\n👤 작성자: ${{ github.actor }}\n📝 제목: ${{ github.event.pull_request.title }}\n🔗 ${{ github.event.pull_request.html_url }}\"
+          }" \
+          "${{ secrets.DISCORD_WEBHOOK }}"
+
+  notify-pr-merged:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify PR Merged
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{
+            \"content\": \"✅ Pull Request 병합 완료\n\n📦 Repository: ${{ github.repository }}\n👤 병합자: ${{ github.actor }}\n📝 제목: ${{ github.event.pull_request.title }}\n🔗 ${{ github.event.pull_request.html_url }}\"
+          }" \
           "${{ secrets.DISCORD_WEBHOOK }}"
