@@ -26,12 +26,32 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Reviewer Mentions
+        id: reviewers
+        run: |
+          REVIEWERS=$(jq -r '.pull_request.requested_reviewers[].login' "$GITHUB_EVENT_PATH")
+
+          MENTIONS=""
+
+          for reviewer in $REVIEWERS
+          do
+            DISCORD_ID=$(jq -r --arg reviewer "$reviewer" '.[$reviewer] // empty' .github/discord-users.json)
+
+            if [ ! -z "$DISCORD_ID" ]; then
+              MENTIONS="$MENTIONS <@$DISCORD_ID>"
+            fi
+          done
+
+          echo "mentions=$MENTIONS" >> $GITHUB_OUTPUT
+
       - name: Notify PR Opened
         run: |
           curl -H "Content-Type: application/json" \
           -X POST \
           -d "{
-            \"content\": \"🚀 Pull Request 생성\n\n📦 Repository: ${{ github.repository }}\n👤 작성자: ${{ github.actor }}\n📝 제목: ${{ github.event.pull_request.title }}\n🔗 ${{ github.event.pull_request.html_url }}\"
+            \"content\": \"🚀 Pull Request 생성\n\n📦 Repository: ${{ github.repository }}\n👤 작성자: ${{ github.actor }}\n👀 리뷰어: ${{ steps.reviewers.outputs.mentions }}\n📝 제목: ${{ github.event.pull_request.title }}\n🔗 ${{ github.event.pull_request.html_url }}\"
           }" \
           "${{ secrets.DISCORD_WEBHOOK }}"
 
