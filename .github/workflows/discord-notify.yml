@@ -1,0 +1,31 @@
+name: Discord Notify
+
+on:
+  workflow_call:
+    secrets:
+      DISCORD_WEBHOOK:
+        required: true
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Send Discord Notification
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "$(jq -n \
+            --arg repo '${{ github.repository }}' \
+            --arg actor '${{ github.actor }}' \
+            --arg msg '${{ github.event.head_commit.message }}' \
+            --arg sha '${{ github.sha }}' \
+            '{
+              content:
+                "🚀 GitHub Push 알림\n" +
+                "📦 Repository: \($repo)\n" +
+                "👤 User: \($actor)\n" +
+                "📝 Commit: \($msg)\n" +
+                "🔖 SHA: \($sha[0:7])"
+            }')" \
+          "${{ secrets.DISCORD_WEBHOOK }}"
